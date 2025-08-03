@@ -1,0 +1,32 @@
+{
+  "name": "emoji-rpg-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Voice-controlled Emoji RPG game with React Native app and Node.js server",
+  "scripts": {
+    "postinstall": "cd app && npm install && cd ../server && npm install",
+    "dev": "concurrently \"npm run server:dev\" \"npm run app:web\"",
+    "app:start": "cd app && npm start",
+    "app:web": "cd app && npm run web",
+    "app:android": "cd app && npm run android",
+    "app:ios": "cd app && npm run ios",
+    "server:start": "cd server && npm start",
+    "server:dev": "cd server && npm run dev",
+    "server:build": "cd server && npm run build",
+    "typecheck": "cd app && npm run typecheck && cd ../server && npm run typecheck",
+    "lint": "cd app && npm run lint && cd ../server && npm run lint",
+    "lint:fix": "cd app && npm run lint:fix && cd ../server && npm run lint:fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json}\"",
+    "clean": "cd app && rm -rf node_modules && cd ../server && rm -rf node_modules && rm -rf node_modules",
+    "fresh": "npm run clean && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
