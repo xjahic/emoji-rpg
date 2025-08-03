@@ -1,0 +1,280 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Emoji RPG Development Standards
+
+## Project Status: OpenAI Integration COMPLETE ✅
+
+This voice-controlled emoji RPG has full OpenAI integration implemented and working:
+- Voice-to-text with Whisper API
+- Dynamic game logic with GPT-4
+- Text-to-speech responses
+- Cross-platform audio handling
+- Comprehensive error handling and fallbacks
+
+## Architecture Overview
+
+### Monorepo Structure
+```
+emoji-rpg/
+├── app/                    # React Native Expo (port 8081)
+│   ├── src/
+│   │   ├── services/       # API, audio, game state
+│   │   └── types/shared.ts # Local copy of shared types
+│   └── App.tsx            # Main game UI
+├── server/                 # Express API (port 3000)
+│   ├── src/
+│   │   └── services/openai/ # OpenAI integration
+│   └── .env               # OPENAI_KEY required
+└── shared/types.ts        # Original shared types
+```
+
+### Voice Processing Pipeline (WORKING)
+```
+Voice Recording → Base64 → Server → Temp File → Whisper API → GPT-4 → TTS → Audio Response
+```
+
+## Code Standards (ENFORCED)
+
+### TypeScript & Formatting
+- **No semicolons** (enforced by Prettier)
+- **Single quotes** for strings
+- **2 spaces** indentation
+- **TypeScript strict mode** enabled
+- **English language only** (UI, prompts, responses)
+
+### Import Patterns
+```typescript
+// ✅ App: Use local types (fixes web bundling)
+import { VoiceActionResponse } from '../../types/shared'
+
+// ✅ Server: Use path mapping
+import { VoiceActionRequest } from '@shared/types'
+
+// ✅ Service imports
+import { useAudioRecording } from './services/audio/recorder'
+```
+
+### Function Structure
+```typescript
+// ✅ React components: regular functions at end
+export default function GameScreen() {
+  const [state, setState] = useState()
+  
+  return <View onPress={handleAction} />
+  
+  function handleAction(): void {
+    // Implementation
+  }
+}
+```
+
+### Error Handling Pattern
+```typescript
+// ✅ Consistent async/await with fallbacks
+try {
+  const response = await openaiCall()
+  return response
+} catch (error) {
+  console.warn('Primary failed, using fallback:', error)
+  return getFallbackResponse()
+}
+```
+
+## Critical Implementation Details
+
+### Audio Processing (Node.js Compatible)
+```typescript
+// ✅ WORKING: Fixed File API issue
+const tempFilePath = await base64ToAudioFile(base64Audio)
+const fileStream = fs.createReadStream(tempFilePath)
+const transcription = await openai.audio.transcriptions.create({
+  file: fileStream,
+  model: 'whisper-1',
+  language: 'en'
+})
+// Auto-cleanup temporary files
+```
+
+### Game Master System Prompt
+```typescript
+const GAME_MASTER_PROMPT = `
+You are the Game Master for an emoji-based RPG adventure.
+
+RULES:
+- Always respond with emoji scenes (6-12 emojis representing the current scenario)
+- Maintain consistent game world and character progression
+- Allow creative player actions while preventing impossible/game-breaking moves
+- Generate 2-4 action options as emoji + text combinations
+- Keep descriptions concise and engaging (1-2 sentences max)
+- Current game state will be provided - maintain continuity
+
+RESPONSE FORMAT:
+You must respond with a valid JSON object containing exactly these fields:
+{
+  "emojiScene": "String of 6-12 emojis representing current scenario",
+  "description": "Brief description in English (1-2 sentences)",
+  "options": ["Array of 2-4 possible actions (emoji + text)"],
+  "newGameState": "New state identifier for continuity",
+  "ttsText": "Same as description, optimized for text-to-speech"
+}
+`
+```
+
+### API Endpoint Structure
+```typescript
+app.post('/api/voice-action', (req, res) => {
+  (async () => {
+    try {
+      // 1. Validate input (audioData OR action + gameState required)
+      // 2. Transcribe audio if provided (with fallback to text)
+      // 3. Generate game response using GPT-4
+      // 4. Create TTS audio response
+      // 5. Return structured response with fallback handling
+      res.json(response)
+    } catch (error) {
+      // Always provide fallback response
+      const fallback = getFallbackResponse(req.body.gameState)
+      res.status(500).json({ ...fallback, fallbackUsed: true })
+    }
+  })().catch((err) => {
+    res.status(500).json({ error: err.toString() })
+  })
+})
+```
+
+## File Organization Standards
+
+### App Structure
+```
+app/src/
+├── services/
+│   ├── api/client.ts       # API communication with retry logic
+│   ├── audio/recorder.ts   # Voice recording (user-provided)
+│   ├── audio/player.ts     # TTS playback
+│   └── game/state.ts       # Game session management
+├── types/shared.ts         # Local copy (fixes bundling)
+└── components/             # UI components
+```
+
+### Server Structure
+```
+server/src/
+├── services/openai/
+│   ├── client.ts          # OpenAI SDK initialization
+│   ├── audio.ts           # Whisper + TTS (Node.js compatible)
+│   └── gamemaster.ts      # GPT-4 game logic
+├── routes/                # API routes
+└── server.ts              # Main Express server
+```
+
+## Development Workflow
+
+### Commands (DO NOT RUN DEV COMMANDS)
+```bash
+# ✅ Only run these
+npm run typecheck    # Always run after code changes
+npm run build        # Build server
+
+# ❌ User handles these
+npm run dev         # User starts development
+npm run server:dev  # User starts server
+npm run app:web     # User starts app
+```
+
+### Environment Setup
+```bash
+# server/.env (REQUIRED)
+OPENAI_KEY=sk-proj-...  # Must be valid OpenAI API key
+
+# Development URLs
+# App: http://localhost:8081
+# Server: http://localhost:3000
+```
+
+## Game-Specific Patterns
+
+### Emoji Vocabulary (Established)
+- 👤 = Player character
+- ❤️ = Health points  
+- 💰 = Gold/currency
+- 🏠 = Home/safe area
+- 🌲 = Forest/wilderness
+- ⚔️ = Combat/weapon
+- 🛡️ = Defense/armor
+- 🔮 = Magic/mystical
+- 👹 = Enemy/monster
+- 🎒 = Inventory/items
+
+### Game State Management
+- **Stateless server**: Game state passed with each request
+- **Continuity**: Each response includes newGameState for progression
+- **Fallbacks**: Always provide valid response even on API failure
+- **Persistence**: App handles local game session storage
+
+### UI Patterns
+- **Dark theme**: Gaming aesthetic with emoji highlighting
+- **Voice-first**: Voice button prominently displayed
+- **Fallback UI**: Text buttons always available
+- **Transcription display**: Show what was heard
+- **Error handling**: User-friendly error messages
+
+## Debugging & Issues (RESOLVED)
+
+### ✅ Fixed Issues
+1. **File API Error**: Replaced web `File` with Node.js file streams
+2. **Import Path Issues**: Local copy of shared types fixes bundling
+3. **TypeScript Compilation**: All types properly resolved
+4. **Audio Processing**: Cross-platform recording and playback working
+
+### Performance Optimizations
+- **Temporary file cleanup**: Prevents disk space issues
+- **Audio size validation**: 10MB limit prevents abuse
+- **Request timeouts**: 10-second timeout with retry logic
+- **Response caching**: Fallback responses for offline scenarios
+
+## Extension Guidelines
+
+### Adding New Game Features
+1. **Expand emoji vocabulary** in gamemaster.ts
+2. **Add new game states** to shared types
+3. **Create fallback responses** for new scenarios
+4. **Update system prompt** with new rules/scenarios
+
+### Adding New Services
+1. **Follow established patterns** (client.ts → service.ts → types)
+2. **Include comprehensive error handling** with fallbacks
+3. **Add TypeScript interfaces** for all data structures
+4. **Test cross-platform compatibility** (web/mobile)
+
+### API Extensions
+1. **Maintain RESTful conventions** (/api/resource-action)
+2. **Include fallback responses** for all endpoints
+3. **Validate all inputs** before processing
+4. **Return consistent response structure**
+
+## Security & Privacy
+
+### API Key Management
+- Store OpenAI key in server/.env only
+- Never log or expose API keys
+- Validate environment variables on startup
+
+### Audio Processing
+- Limit audio file size (10MB max)
+- Clean up temporary files immediately
+- Don't log user audio data
+- Rate limit requests to prevent abuse
+
+### Error Handling
+- Never expose internal errors to client
+- Always provide user-friendly error messages
+- Log detailed errors on server only
+- Maintain functionality even on API failures
+
+---
+**Status**: Production ready with full OpenAI integration working
+**Last Updated**: Current implementation complete and tested
+**Next**: Ready for feature expansion and enhancements
